@@ -1,17 +1,34 @@
 #include <SDL2/SDL.h>
 
+#include "util.h"
+
 SDL_Window *window;
 SDL_Renderer *renderer;
 SDL_Texture *texture;
 
 void initSDL(const char *title, int windowWidth, int windowHeight, int textureWidth, int textureHeight) {
-	SDL_Init(SDL_INIT_VIDEO);
+	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+		SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
+		die("SDL: unable to init SDL");
+	}
 
 	window = SDL_CreateWindow(title, 0, 0, windowWidth, windowHeight, SDL_WINDOW_SHOWN);
+	if (window == NULL) {
+		SDL_Log("Unable to create window: %s", SDL_GetError());
+		die("SDL: unable to init SDL");
+	}
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	if (renderer == NULL) {
+		SDL_Log("Unable to create renderer: %s", SDL_GetError());
+		die("SDL: unable to init SDL");
+	}
 
 	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, textureWidth, textureHeight);
+	if (texture == NULL) {
+		SDL_Log("Unable to create texture: %s", SDL_GetError());
+		die("SDL: unable to init SDL");
+	}
 }
 
 void cleanSDL() {

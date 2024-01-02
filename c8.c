@@ -537,6 +537,9 @@ void loadROM(const char *filename) {
 	uint16_t size;
 
 	fp = fopen(filename, "r");
+	if (fp == NULL) {
+		die("c8: cannot open %s\n", filename);
+	}
 
 	// Get size of file
 	fseek(fp, 0, SEEK_END);
@@ -587,6 +590,8 @@ int main(int argc, char *argv[]) {
 			updateSDL(video, videoPitch);
 		}
 	}
+
+	cleanSDL();
 
 	return 0;
 }
