@@ -1,14 +1,53 @@
 #include <SDL2/SDL.h>
 
+#include "sdl.h"
 #include "util.h"
+
+#define FREQUENCY 44100
+#define AMPLITUDE 3000
+#define TONE 262
 
 SDL_Window *window;
 SDL_Renderer *renderer;
 SDL_Texture *texture;
+SDL_AudioDeviceID deviceid;
+
+// This method of generating square waves is somewhat inconsistent
+// it needs to be replaced eventually...but for now it works
+void audioCallback(void *_data, uint8_t *buffer, int length) {
+	int count = 0;
+	int16_t *stream = (int16_t *) buffer;
+	length = length / sizeof(int16_t);
+
+	for (int i = 0; i < length; i++) {
+		int16_t value = AMPLITUDE;
+
+		// Alternate amplitudes
+		if ((count / (FREQUENCY / TONE)) % 2) {
+			value = -AMPLITUDE;
+		}
+
+		*stream++ = value;
+		count++;
+	}
+}
 
 void initSDL(const char *title, int windowWidth, int windowHeight, int textureWidth, int textureHeight) {
+	SDL_AudioSpec spec;
+
+	spec.freq = FREQUENCY;
+	spec.format = AUDIO_S16LSB;
+	spec.channels = 1;
+	spec.samples = 2048;
+	spec.callback = &audioCallback;
+
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-		SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
+		SDL_Log("Unable to initialize SDL video: %s", SDL_GetError());
+		die("SDL: unable to init SDL");
+	}
+
+	if (SDL_Init(SDL_INIT_AUDIO) != 0) {
+		SDL_Log("Unable to initialize SDL audio: %s", SDL_GetError());
 		die("SDL: unable to init SDL");
 	}
 
@@ -29,12 +68,19 @@ void initSDL(const char *title, int windowWidth, int windowHeight, int textureWi
 		SDL_Log("Unable to create texture: %s", SDL_GetError());
 		die("SDL: unable to init SDL");
 	}
+
+	deviceid = SDL_OpenAudioDevice(NULL, 0, &spec, NULL, 0);
+	if (deviceid == 0) {
+		SDL_Log("Unable to open audio device: %s", SDL_GetError());
+		die("SDL: unable to init SDL");
+	}
 }
 
 void cleanSDL() {
 	SDL_DestroyTexture(texture);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
+	SDL_CloseAudio();
 	SDL_Quit();
 }
 
@@ -43,6 +89,12 @@ void updateSDL(const void *buffer, int pitch) {
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
+}
+
+void beepSDL(int beep) {
+	// 1 is not beep, 0 is beep
+	// I know, it's counter intuitive
+	SDL_PauseAudioDevice(deviceid, beep);
 }
 
 int processInput(uint8_t *keys) {

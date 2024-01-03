@@ -521,13 +521,16 @@ void cycle() {
 	// Decode and execute
 	table[(opcode & 0xF000) >> 12]();
 
-	// Decrement delay timer if it has not been set
+	// Decrement delay timer if it has been set
 	if (delayTimer > 0) {
 		delayTimer--;
 	}
-	// Decrement sound timer if it has not been set
+	// Decrement sound timer if it has been set
 	if (soundTimer > 0) {
 		soundTimer--;
+		beepSDL(0);
+	} else {
+		beepSDL(1);
 	}
 }
 
