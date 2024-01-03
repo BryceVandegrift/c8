@@ -13,7 +13,10 @@ all: c8
 c8: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
-clean:
-	rm -f c8 ${OBJ}
+c8-static: ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS} -static
 
-.PHONY: all clean
+clean:
+	rm -f c8 c8-static ${OBJ}
+
+.PHONY: all static clean

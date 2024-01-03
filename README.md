@@ -47,6 +47,19 @@ process it teaches the user how virtual machines and emulators work.
 The CHIP-8 is sort of like a *"Baby's First Virtual Machine"* for someone
 who has never dipped their toes in this field.
 
+## TODO
+
+This project is still a work in progress. Some things that need to be
+changed are:
+
+- Implement "correct" instruction set,
+[here](https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set)
+- Make scaling and timer values optional
+- Code needs to be refactored, it looks like crap
+- Make audio more consistent/less buggy
+- Less inadequate error handling in `SDL.c`
+- Port to other systems(?)
+
 ## Note
 
 This specific CHIP-8 implementation is based on code from Austin Morlan.
