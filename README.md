@@ -13,15 +13,11 @@ make
 
 ## Running
 
-To run `c8` you will need to supply:
-
-- A video scaling factor (10 works pretty well)
-- A timer delay factor (3-4 works pretty well)
-- A CHIP-8 ROM file (You can find some public domain ROM files
-[here](https://johnearnest.github.io/chip8Archive/))
+To run `c8` you will need to supply a CHIP-8 ROM file (You can find some ROM
+files [here](https://github.com/dmatlack/chip8/tree/master/roms/games))
 
 ``` sh
-./c8 10 3 rom.ch8
+./c8 -f rom.ch8
 ```
 
 ## What is CHIP-8?
@@ -54,7 +50,6 @@ changed are:
 
 - Implement "correct" instruction set,
 [here](https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set)
-- Make scaling and timer values optional
 - Code needs to be refactored, it looks like crap
 - Make audio more consistent/less buggy
 - Less inadequate error handling in `SDL.c`

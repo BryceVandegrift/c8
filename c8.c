@@ -49,6 +49,10 @@ uint8_t keypad[16];
 uint32_t video[VIDEO_WIDTH * VIDEO_HEIGHT];
 uint16_t opcode;
 
+// Runtime variables
+int videoScale = 10;
+int cycleDelay = 4;
+
 // Dispatch tables
 typedef void (*optable)();
 optable table0[0xE + 1];
@@ -557,19 +561,41 @@ void loadROM(const char *filename) {
 	fclose(fp);
 }
 
+void usage() {
+	die("usage: c8 [-f ROM] [-s scale] [-d delay] [-v] [-h]");
+}
+
 int main(int argc, char *argv[]) {
-	if (argc < 4) {
-		die("usage: c8 [scale] [delay] [ROM file]");
+	const char *filename = NULL;
+
+	for (int i = 1; i < argc; i++) {
+		// These options have no arguments
+		if (!strcmp(argv[i], "-v")) {
+			fprintf(stderr, "c8\n");
+			return 0;
+		} else if (!strcmp(argv[i], "-h")) {
+			usage();
+		}
+		// These options take one arugment
+		else if (!strcmp(argv[i], "-f")) {
+			filename = argv[++i];
+		} else if (!strcmp(argv[i], "-s")) {
+			videoScale = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "-d")) {
+			cycleDelay = atoi(argv[++i]);
+		} else {
+			usage();
+		}
 	}
 
-	int videoScale = atoi(argv[1]);
-	int cycleDelay = atoi(argv[2]);
-	const char *filename = argv[3];
+	if (filename == NULL) {
+		die("please provide ROM file");
+	}
+
+	init();
+	loadROM(filename);
 
 	initSDL("CHIP-8 Emulator", VIDEO_WIDTH * videoScale, VIDEO_HEIGHT * videoScale, VIDEO_WIDTH, VIDEO_HEIGHT);
-	init();
-
-	loadROM(filename);
 
 	int videoPitch = sizeof(video[0]) * VIDEO_WIDTH;
 

@@ -19,4 +19,4 @@ c8-static: ${OBJ}
 clean:
 	rm -f c8 c8-static ${OBJ}
 
-.PHONY: all static clean
+.PHONY: all clean
