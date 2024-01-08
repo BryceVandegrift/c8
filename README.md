@@ -20,6 +20,11 @@ files [here](https://github.com/dmatlack/chip8/tree/master/roms/games))
 ./c8 -f rom.ch8
 ```
 
+Note: Some CHIP-8 games use a "false" instruction set that differs from the
+normal CHIP-8 instruction set. If for some reason a CHIP-8 ROM does not work,
+try giving the `-i` option to enable *"incorrect mode"* which emulates this
+"false" instruction set.
+
 ## What is CHIP-8?
 
 The CHIP-8 is a virtual machine dating all the way back to the mid-1970s.
@@ -48,8 +53,6 @@ who has never dipped their toes in this field.
 This project is still a work in progress. Some things that need to be
 changed are:
 
-- Implement "correct" instruction set,
-[here](https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set)
 - Code needs to be refactored, it looks like crap
 - Make audio more consistent/less buggy
 - Less inadequate error handling in `SDL.c`

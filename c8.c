@@ -52,6 +52,7 @@ uint16_t opcode;
 // Runtime variables
 int videoScale = 10;
 int cycleDelay = 4;
+int incorrect = 0;
 
 // Dispatch tables
 typedef void (*optable)();
@@ -196,12 +197,18 @@ void OP_8xy5() {
 	registers[Vx] -= registers[Vy];
 }
 
-// Shift Vx right by 1
+// Incorrect mode: Shift Vx right by 1
+// Correct mode: Copy Vy to Vx and shift Vx right by 1
 void OP_8xy6() {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
+	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
 	// Save least significant bit in VF
 	registers[0xF] = (registers[Vx] & 0x1);
+
+	if (!incorrect) {
+		registers[Vx] = registers[Vy];
+	}
 
 	registers[Vx] >>= 1;
 }
@@ -220,12 +227,18 @@ void OP_8xy7() {
 	registers[Vx] = registers[Vy] - registers[Vx];
 }
 
-// Shift Vx left by 1
+// Incorrect mode: Shift Vx left by 1
+// Correct mode: Copy Vy to Vx and shift Vx left by 1
 void OP_8xyE() {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
+	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
 	// Save least significant bit in VF
 	registers[0xF] = (registers[Vx] & 0x80) >> 7;
+
+	if (!incorrect) {
+		registers[Vx] = registers[Vy];
+	}
 
 	registers[Vx] <<= 1;
 }
@@ -412,20 +425,30 @@ void OP_Fx33() {
 }
 
 // Store registers V0 through Vx into memory starting at I
+// Correct mode: I is set to I + X + 1 after operation
 void OP_Fx55() {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
 	for (size_t i = 0; i <= Vx; i++) {
 		memory[index + i] = registers[i];
 	}
+
+	if (!incorrect) {
+		index += Vx + 1;
+	}
 }
 
 // Read registers V0 through Vx from memory starting at I
+// Correct mode: I is set to I + X + 1 after operation
 void OP_Fx65() {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
 	for (size_t i = 0; i <= Vx; i++) {
 		registers[i] = memory[index + i];
+	}
+
+	if (!incorrect) {
+		index += Vx + 1;
 	}
 }
 
@@ -575,6 +598,8 @@ int main(int argc, char *argv[]) {
 			return 0;
 		} else if (!strcmp(argv[i], "-h")) {
 			usage();
+		} else if (!strcmp(argv[i], "-i")) {
+			incorrect = 1;
 		}
 		// These options take one arugment
 		else if (!strcmp(argv[i], "-f")) {
