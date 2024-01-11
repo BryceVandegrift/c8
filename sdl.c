@@ -42,38 +42,38 @@ void initSDL(const char *title, int windowWidth, int windowHeight, int textureWi
 	spec.callback = &audioCallback;
 
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-		SDL_Log("Unable to initialize SDL video: %s", SDL_GetError());
-		die("SDL: unable to init SDL");
+		goto error;
 	}
 
 	if (SDL_Init(SDL_INIT_AUDIO) != 0) {
-		SDL_Log("Unable to initialize SDL audio: %s", SDL_GetError());
-		die("SDL: unable to init SDL");
+		goto error;
 	}
 
 	window = SDL_CreateWindow(title, 0, 0, windowWidth, windowHeight, SDL_WINDOW_SHOWN);
 	if (window == NULL) {
-		SDL_Log("Unable to create window: %s", SDL_GetError());
-		die("SDL: unable to init SDL");
+		goto error;
 	}
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 	if (renderer == NULL) {
-		SDL_Log("Unable to create renderer: %s", SDL_GetError());
-		die("SDL: unable to init SDL");
+		goto error;
 	}
 
 	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, textureWidth, textureHeight);
 	if (texture == NULL) {
-		SDL_Log("Unable to create texture: %s", SDL_GetError());
-		die("SDL: unable to init SDL");
+		goto error;
 	}
 
 	deviceid = SDL_OpenAudioDevice(NULL, 0, &spec, NULL, 0);
 	if (deviceid == 0) {
-		SDL_Log("Unable to open audio device: %s", SDL_GetError());
-		die("SDL: unable to init SDL");
+		goto error;
 	}
+
+	return;
+
+error:
+	SDL_Log("SDL error: %s", SDL_GetError());
+	die("unable to init SDL");
 }
 
 void cleanSDL() {

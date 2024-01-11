@@ -55,7 +55,6 @@ changed are:
 
 - Code needs to be refactored, it looks like crap
 - Make audio more consistent/less buggy
-- Less inadequate error handling in `SDL.c`
 - Port to other systems(?)
 
 ## Note
