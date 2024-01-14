@@ -5,7 +5,9 @@
 
 #include "util.h"
 
-void die(const char *fmt, ...) {
+void
+die(const char *fmt, ...)
+{
 	va_list ap;
 
 	va_start(ap, fmt);

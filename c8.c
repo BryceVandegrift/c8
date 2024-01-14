@@ -1,5 +1,3 @@
-#define _POSIX_C_SOURCE 199309L
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,79 +7,133 @@
 #include "sdl.h"
 #include "util.h"
 
-// VM constants
+/* VM constants */
 #define START_ADDRESS 0x200
 #define FONTSET_SIZE 80
 #define FONTSET_START_ADDRESS 0x50
 #define VIDEO_WIDTH 64
 #define VIDEO_HEIGHT 32
 
-// VM fontset
-const uint8_t fontset[FONTSET_SIZE] = {
-	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-	0x20, 0x60, 0x20, 0x20, 0x70, // 1
-	0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-	0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-	0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-	0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-	0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-	0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-	0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-	0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-	0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-	0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-	0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-	0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-	0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-	0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+typedef void (*optable)();
+
+/* Function definitions */
+static void OP_00E0(void);
+static void OP_00EE(void);
+static void OP_1nnn(void);
+static void OP_2nnn(void);
+static void OP_3xkk(void);
+static void OP_4xkk(void);
+static void OP_5xy0(void);
+static void OP_6xkk(void);
+static void OP_7xkk(void);
+static void OP_8xy0(void);
+static void OP_8xy1(void);
+static void OP_8xy2(void);
+static void OP_8xy3(void);
+static void OP_8xy4(void);
+static void OP_8xy5(void);
+static void OP_8xy6(void);
+static void OP_8xy7(void);
+static void OP_8xyE(void);
+static void OP_9xy0(void);
+static void OP_Annn(void);
+static void OP_Bnnn(void);
+static void OP_Cxkk(void);
+static void OP_Dxyn(void);
+static void OP_Ex9E(void);
+static void OP_ExA1(void);
+static void OP_Fx07(void);
+static void OP_Fx0A(void);
+static void OP_Fx15(void);
+static void OP_Fx18(void);
+static void OP_Fx1E(void);
+static void OP_Fx29(void);
+static void OP_Fx33(void);
+static void OP_Fx55(void);
+static void OP_Fx65(void);
+static void OP_NULL(void);
+static void Table0(void);
+static void Table8(void);
+static void TableE(void);
+static void TableF(void);
+static void init(void);
+static void cycle(void);
+static void loadROM(const char *filename);
+static void usage(void);
+
+/* VM fontset */
+static const uint8_t fontset[FONTSET_SIZE] = {
+	0xF0, 0x90, 0x90, 0x90, 0xF0, /* 0 */
+	0x20, 0x60, 0x20, 0x20, 0x70, /* 1 */
+	0xF0, 0x10, 0xF0, 0x80, 0xF0, /* 2 */
+	0xF0, 0x10, 0xF0, 0x10, 0xF0, /* 3 */
+	0x90, 0x90, 0xF0, 0x10, 0x10, /* 4 */
+	0xF0, 0x80, 0xF0, 0x10, 0xF0, /* 5 */
+	0xF0, 0x80, 0xF0, 0x90, 0xF0, /* 6 */
+	0xF0, 0x10, 0x20, 0x40, 0x40, /* 7 */
+	0xF0, 0x90, 0xF0, 0x90, 0xF0, /* 8 */
+	0xF0, 0x90, 0xF0, 0x10, 0xF0, /* 9 */
+	0xF0, 0x90, 0xF0, 0x90, 0x90, /* A */
+	0xE0, 0x90, 0xE0, 0x90, 0xE0, /* B */
+	0xF0, 0x80, 0x80, 0x80, 0xF0, /* C */
+	0xE0, 0x90, 0x90, 0x90, 0xE0, /* D */
+	0xF0, 0x80, 0xF0, 0x80, 0xF0, /* E */
+	0xF0, 0x80, 0xF0, 0x80, 0x80  /* F */
 };
 
-// VM variables
-uint8_t registers[16];
-uint8_t memory[4096];
-uint16_t index;
-uint16_t pc;
-uint16_t stack[16];
-uint8_t sp;
-uint8_t delayTimer;
-uint8_t soundTimer;
-uint8_t keypad[16];
-uint32_t video[VIDEO_WIDTH * VIDEO_HEIGHT];
-uint16_t opcode;
+/* VM variables */
+static uint8_t registers[16];
+static uint8_t memory[4096];
+static uint16_t index;
+static uint16_t pc;
+static uint16_t stack[16];
+static uint8_t sp;
+static uint8_t delayTimer;
+static uint8_t soundTimer;
+static uint8_t keypad[16];
+static uint32_t video[VIDEO_WIDTH * VIDEO_HEIGHT];
+static uint16_t opcode;
 
-// Runtime variables
-int videoScale = 10;
-int cycleDelay = 4;
-int incorrect = 0;
+/* Runtime variables */
+static int videoScale = 10;
+static int cycleDelay = 4;
+static int incorrect = 0;
 
-// Dispatch tables
-typedef void (*optable)();
-optable table0[0xE + 1];
-optable table8[0xE + 1];
-optable tableE[0xE + 1];
-optable tableF[0x65 + 1];
-optable table[0xF + 1];
+/* Dispatch tables */
+static optable table0[0xE + 1];
+static optable table8[0xE + 1];
+static optable tableE[0xE + 1];
+static optable tableF[0x65 + 1];
+static optable table[0xF + 1];
 
-// Clear display
-void OP_00E0() {
+/* Clear display */
+void
+OP_00E0()
+{
 	memset(video, 0, sizeof(video));
 }
 
-// Return from subroutine
-void OP_00EE() {
+/* Return from subroutine */
+void
+OP_00EE()
+{
 	sp--;
 	pc = stack[sp];
 }
 
-// Jump to nnn
-void OP_1nnn() {
+/* Jump to nnn */
+void
+OP_1nnn()
+{
 	uint16_t address = opcode & 0x0FFF;
 
 	pc = address;
 }
 
-// Call subroutine at nnn
-void OP_2nnn() {
+/* Call subroutine at nnn */
+void
+OP_2nnn()
+{
 	uint16_t address = opcode & 0x0FFF;
 
 	stack[sp] = pc;
@@ -89,8 +141,10 @@ void OP_2nnn() {
 	pc = address;
 }
 
-// Skip next instruction if Vx = kk
-void OP_3xkk() {
+/* Skip next instruction if Vx = kk */
+void
+OP_3xkk()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t byte = opcode & 0x00FF;
 
@@ -99,8 +153,10 @@ void OP_3xkk() {
 	}
 }
 
-// Skip next instruction if Vx != kk
-void OP_4xkk() {
+/* Skip next instruction if Vx != kk */
+void
+OP_4xkk()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t byte = opcode & 0x00FF;
 
@@ -109,8 +165,10 @@ void OP_4xkk() {
 	}
 }
 
-// Skip next instruction if Vx = Vy
-void OP_5xy0() {
+/* Skip next instruction if Vx = Vy */
+void
+OP_5xy0()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
@@ -119,59 +177,72 @@ void OP_5xy0() {
 	}
 }
 
-// Set Vx = kk
-void OP_6xkk() {
+/* Set Vx = kk */
+void
+OP_6xkk()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t byte = opcode & 0x00FF;
 
 	registers[Vx] = byte;
 }
 
-// Set Vx = Vx + kk
-void OP_7xkk() {
+/* Set Vx = Vx + kk */
+void
+OP_7xkk()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t byte = opcode & 0x00FF;
 
 	registers[Vx] += byte;
 }
 
-// Set Vx = Vy
-void OP_8xy0() {
+/* Set Vx = Vy */
+void
+OP_8xy0()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
 	registers[Vx] = registers[Vy];
 }
 
-// Set Vx = Vx OR Vy
-void OP_8xy1() {
+/* Set Vx = Vx OR Vy */
+void
+OP_8xy1()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
 	registers[Vx] |= registers[Vy];
 }
 
-// Set Vx = Vx AND Vy
-void OP_8xy2() {
+/* Set Vx = Vx AND Vy */
+void
+OP_8xy2()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
 	registers[Vx] &= registers[Vy];
 }
 
-// Set Vx = Vx XOR Vy
-void OP_8xy3() {
+/* Set Vx = Vx XOR Vy */
+void
+OP_8xy3()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
 	registers[Vx] ^= registers[Vy];
 }
 
-// Set Vx = Vx + Vy, set VF = carry
-void OP_8xy4() {
+/* Set Vx = Vx + Vy, set VF = carry */
+void
+OP_8xy4()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
-
 	uint16_t sum = registers[Vx] + registers[Vy];
 
 	if (sum > 255) {
@@ -183,8 +254,10 @@ void OP_8xy4() {
 	registers[Vx] = sum & 0xFF;
 }
 
-// Set Vx = Vx - Vy, set VF = NOT borrow
-void OP_8xy5() {
+/* Set Vx = Vx - Vy, set VF = NOT borrow */
+void
+OP_8xy5()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
@@ -197,13 +270,15 @@ void OP_8xy5() {
 	registers[Vx] -= registers[Vy];
 }
 
-// Incorrect mode: Shift Vx right by 1
-// Correct mode: Copy Vy to Vx and shift Vx right by 1
-void OP_8xy6() {
+/* Incorrect mode: Shift Vx right by 1
+ * Correct mode: Copy Vy to Vx and shift Vx right by 1 */
+void
+OP_8xy6()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
-	// Save least significant bit in VF
+	/* Save least significant bit in VF */
 	registers[0xF] = (registers[Vx] & 0x1);
 
 	if (!incorrect) {
@@ -213,8 +288,10 @@ void OP_8xy6() {
 	registers[Vx] >>= 1;
 }
 
-// Set Vx = Vy - Vx, set VF = NOT borrow
-void OP_8xy7() {
+/* Set Vx = Vy - Vx, set VF = NOT borrow */
+void
+OP_8xy7()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
@@ -227,13 +304,15 @@ void OP_8xy7() {
 	registers[Vx] = registers[Vy] - registers[Vx];
 }
 
-// Incorrect mode: Shift Vx left by 1
-// Correct mode: Copy Vy to Vx and shift Vx left by 1
-void OP_8xyE() {
+/* Incorrect mode: Shift Vx left by 1
+ * Correct mode: Copy Vy to Vx and shift Vx left by 1 */
+void
+OP_8xyE()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
-	// Save least significant bit in VF
+	/* Save least significant bit in VF */
 	registers[0xF] = (registers[Vx] & 0x80) >> 7;
 
 	if (!incorrect) {
@@ -243,8 +322,10 @@ void OP_8xyE() {
 	registers[Vx] <<= 1;
 }
 
-// Skip next instruction if Vx != Vy
-void OP_9xy0() {
+/* Skip next instruction if Vx != Vy */
+void
+OP_9xy0()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
@@ -253,65 +334,78 @@ void OP_9xy0() {
 	}
 }
 
-// Set I = nnn
-void OP_Annn() {
+/* Set I = nnn */
+void
+OP_Annn()
+{
 	uint16_t address = opcode & 0x0FFF;
 
 	index = address;
 }
 
-// Jump to location nnn + V0
-void OP_Bnnn() {
+/* Jump to location nnn + V0 */
+void
+OP_Bnnn()
+{
 	uint16_t address = opcode & 0x0FFF;
 
 	pc = registers[0] + address;
 }
 
-// Set Vx = random byte AND kk
-void OP_Cxkk() {
+/* Set Vx = random byte AND kk */
+void
+OP_Cxkk()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t byte = opcode & 0x00FF;
 
 	registers[Vx] = (rand() % 256) & byte;
 }
 
-// Display n-byte sprite starting at location I at (Vx, Vy), set VF = collision
-void OP_Dxyn() {
+/* Display n-byte sprite starting at location I at (Vx, Vy), set VF = collision */
+void
+OP_Dxyn()
+{
+	uint8_t xPos, yPos;
+	uint8_t spritebyte, spritepixel;
+	size_t row, col;
+	uint32_t *screenpixel;
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 	uint8_t height = opcode & 0x000F;
 
-	// Wrap if going beyond screen boundaries
-	uint8_t xPos = registers[Vx] % VIDEO_WIDTH;
-	uint8_t yPos = registers[Vy] % VIDEO_HEIGHT;
+	/* Wrap if going beyond screen boundaries */
+	xPos = registers[Vx] % VIDEO_WIDTH;
+	yPos = registers[Vy] % VIDEO_HEIGHT;
 
 	registers[0xF] = 0;
 
-	for (size_t row = 0; row < height; row++) {
-		uint8_t spriteByte = memory[index + row];
+	for (row = 0; row < height; row++) {
+		spritebyte = memory[index + row];
 
-		for (size_t col = 0; col < 8; col++) {
-			uint8_t spritePixel = spriteByte & (0x80 >> col);
-			uint32_t *screenPixel = &video[(yPos + row) * VIDEO_WIDTH + (xPos + col)];
+		for (col = 0; col < 8; col++) {
+			spritepixel = spritebyte & (0x80 >> col);
+			screenpixel = &video[(yPos + row) * VIDEO_WIDTH + (xPos + col)];
 
-			// if sprite pixel is on
-			if (spritePixel) {
-				// if sprite pixel is also on then collision
-				if (*screenPixel == 0xFFFFFFFF) {
+			/* if sprite pixel is on */
+			if (spritepixel) {
+				/* if sprite pixel is also on then collision */
+				if (*screenpixel == 0xFFFFFFFF) {
 					registers[0xF] = 1;
 				}
 
-				// XOR with sprite pixel
-				*screenPixel ^= 0xFFFFFFFF;
+				/* XOR with sprite pixel */
+				*screenpixel ^= 0xFFFFFFFF;
 			}
 		}
 	}
 }
 
-// Skip next instruction if key with value of Vx is pressed
-void OP_Ex9E() {
+/* Skip next instruction if key with value of Vx is pressed */
+void
+OP_Ex9E()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
-
 	uint8_t key = registers[Vx];
 
 	if (keypad[key]) {
@@ -319,10 +413,11 @@ void OP_Ex9E() {
 	}
 }
 
-// Skip next instruction if key with value of Vx is not pressed
-void OP_ExA1() {
+/* Skip next instruction if key with value of Vx is not pressed */
+void
+OP_ExA1()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
-
 	uint8_t key = registers[Vx];
 
 	if (!keypad[key]) {
@@ -330,15 +425,19 @@ void OP_ExA1() {
 	}
 }
 
-// Set Vx = delay timer value
-void OP_Fx07() {
+/* Set Vx = delay timer value */
+void
+OP_Fx07()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
 	registers[Vx] = delayTimer;
 }
 
-// Wait for a key press then store value of key in Vx
-void OP_Fx0A() {
+/* Wait for a key press then store value of key in Vx */
+void
+OP_Fx0A()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
 	if (keypad[0]) {
@@ -378,58 +477,71 @@ void OP_Fx0A() {
 	}
 }
 
-// Set delay timer = Vx
-void OP_Fx15() {
+/* Set delay timer = Vx */
+void
+OP_Fx15()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
 	delayTimer = registers[Vx];
 }
 
-// Set sound timer = Vx
-void OP_Fx18() {
+/* Set sound timer = Vx */
+void
+OP_Fx18()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
 	soundTimer = registers[Vx];
 }
 
-// Set I = I + Vx
-void OP_Fx1E() {
+/* Set I = I + Vx */
+void
+OP_Fx1E()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
 	index += registers[Vx];
 }
 
-// Set I = location of sprite for digit Vx
-void OP_Fx29() {
+/* Set I = location of sprite for digit Vx */
+void
+OP_Fx29()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t digit = registers[Vx];
 
 	index = FONTSET_START_ADDRESS + (5 * digit);
 }
 
-// Store BCD representation of Vx in location I, I+1, I+2
-void OP_Fx33() {
+/* Store BCD representation of Vx in location I, I+1, I+2 */
+void
+OP_Fx33()
+{
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t value = registers[Vx];
 
-	// Ones-place
+	/* Ones-place */
 	memory[index + 2] = value % 10;
 	value /= 10;
 
-	// Tens-place
+	/* Tens-place */
 	memory[index + 1] = value % 10;
 	value /= 10;
 
-	// Hundreds-place
+	/* Hundreds-place */
 	memory[index] = value % 10;
 }
 
-// Store registers V0 through Vx into memory starting at I
-// Correct mode: I is set to I + X + 1 after operation
-void OP_Fx55() {
+/* Store registers V0 through Vx into memory starting at I
+ * Correct mode: I is set to I + X + 1 after operation */
+void
+OP_Fx55()
+{
+	size_t i;
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
-	for (size_t i = 0; i <= Vx; i++) {
+	for (i = 0; i <= Vx; i++) {
 		memory[index + i] = registers[i];
 	}
 
@@ -438,12 +550,15 @@ void OP_Fx55() {
 	}
 }
 
-// Read registers V0 through Vx from memory starting at I
-// Correct mode: I is set to I + X + 1 after operation
-void OP_Fx65() {
+/* Read registers V0 through Vx from memory starting at I
+ * Correct mode: I is set to I + X + 1 after operation */
+void
+OP_Fx65()
+{
+	size_t i;
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 
-	for (size_t i = 0; i <= Vx; i++) {
+	for (i = 0; i <= Vx; i++) {
 		registers[i] = memory[index + i];
 	}
 
@@ -452,38 +567,52 @@ void OP_Fx65() {
 	}
 }
 
-// Null opcode
-void OP_NULL() {}
+/* Null opcode */
+void
+OP_NULL()
+{}
 
-// Helper functions for dispatch table
-void Table0() {
+/* Helper functions for dispatch table */
+void
+Table0()
+{
 	table0[opcode & 0x000F]();
 }
 
-void Table8() {
+void
+Table8()
+{
 	table8[opcode & 0x000F]();
 }
 
-void TableE() {
+void
+TableE()
+{
 	tableE[opcode & 0x000F]();
 }
 
-void TableF() {
+void
+TableF()
+{
 	tableF[opcode & 0x00FF]();
 }
 
-void init() {
+void
+init()
+{
+	size_t i;
+
 	pc = START_ADDRESS;
 
-	// Load fonts into memory
-	for (size_t i = 0; i < FONTSET_SIZE; i++) {
+	/* Load fonts into memory */
+	for (i = 0; i < FONTSET_SIZE; i++) {
 		memory[FONTSET_START_ADDRESS + i] = fontset[i];
 	}
 
-	// Set random number seed
+	/* Set random number seed */
 	srand(time(NULL));
 
-	// Setup displatch table
+	/* Setup displatch table */
 	table[0x0] = &Table0;
 	table[0x1] = &OP_1nnn;
 	table[0x2] = &OP_2nnn;
@@ -501,7 +630,7 @@ void init() {
 	table[0xE] = &TableE;
 	table[0xF] = &TableF;
 
-	for (size_t i = 0; i <= 0xE; i++) {
+	for (i = 0; i <= 0xE; i++) {
 		table0[i] = &OP_NULL;
 		table8[i] = &OP_NULL;
 		tableE[i] = &OP_NULL;
@@ -523,7 +652,7 @@ void init() {
 	tableE[0x1] = &OP_ExA1;
 	tableE[0xE] = &OP_Ex9E;
 
-	for (size_t i = 0; i <= 0x65; i++) {
+	for (i = 0; i <= 0x65; i++) {
 		tableF[i] = &OP_NULL;
 	}
 
@@ -538,21 +667,23 @@ void init() {
 	tableF[0x65] = &OP_Fx65;
 }
 
-// CHIP-8 cycle
-void cycle() {
-	// Fetch
+/* CHIP-8 cycle */
+void
+cycle()
+{
+	/* Fetch */
 	opcode = (memory[pc] << 8) | memory[pc + 1];
 
 	pc += 2;
 
-	// Decode and execute
+	/* Decode and execute */
 	table[(opcode & 0xF000) >> 12]();
 
-	// Decrement delay timer if it has been set
+	/* Decrement delay timer if it has been set */
 	if (delayTimer > 0) {
 		delayTimer--;
 	}
-	// Decrement sound timer if it has been set
+	/* Decrement sound timer if it has been set */
 	if (soundTimer > 0) {
 		soundTimer--;
 		beepSDL(0);
@@ -561,22 +692,23 @@ void cycle() {
 	}
 }
 
-void loadROM(const char *filename) {
+void
+loadROM(const char *filename)
+{
 	FILE *fp;
 	char ch;
-	uint16_t size;
+	size_t size, i;
 
-	fp = fopen(filename, "r");
-	if (fp == NULL) {
-		die("c8: cannot open %s\n", filename);
+	if ((fp = fopen(filename, "r")) == NULL) {
+		die("cannot open %s\n", filename);
 	}
 
-	// Get size of file
+	/* Get size of file */
 	fseek(fp, 0, SEEK_END);
 	size = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
-	for (size_t i = 0; i < size; i++) {
+	for (i = 0; i < size; i++) {
 		ch = getc(fp);
 		memory[START_ADDRESS + i] = ch;
 	}
@@ -584,15 +716,24 @@ void loadROM(const char *filename) {
 	fclose(fp);
 }
 
-void usage() {
+void
+usage()
+{
 	die("usage: c8 [-f ROM] [-s scale] [-d delay] [-v] [-h]");
 }
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[])
+{
 	const char *filename = NULL;
+	size_t videopitch;
+	struct timespec ts1, ts2;
+	unsigned int quit = 0;
+	double dt;
+	int i;
 
-	for (int i = 1; i < argc; i++) {
-		// These options have no arguments
+	for (i = 1; i < argc; i++) {
+		/* These options have no arguments */
 		if (!strcmp(argv[i], "-v")) {
 			fprintf(stderr, "c8\n");
 			return 0;
@@ -601,7 +742,7 @@ int main(int argc, char *argv[]) {
 		} else if (!strcmp(argv[i], "-i")) {
 			incorrect = 1;
 		}
-		// These options take one arugment
+		/* These options take one arugment */
 		else if (!strcmp(argv[i], "-f")) {
 			filename = argv[++i];
 		} else if (!strcmp(argv[i], "-s")) {
@@ -619,29 +760,25 @@ int main(int argc, char *argv[]) {
 
 	init();
 	loadROM(filename);
-
 	initSDL("CHIP-8 Emulator", VIDEO_WIDTH * videoScale, VIDEO_HEIGHT * videoScale, VIDEO_WIDTH, VIDEO_HEIGHT);
 
-	int videoPitch = sizeof(video[0]) * VIDEO_WIDTH;
+	videopitch = sizeof(video[0]) * VIDEO_WIDTH;
 
-	struct timespec timestamp1;
-	clock_gettime(CLOCK_MONOTONIC, &timestamp1);
-	int quit = 0;
+	clock_gettime(CLOCK_MONOTONIC, &ts1);
 
 	while (!quit) {
 		quit = processInput(keypad);
 
-		struct timespec timestamp2;
-		clock_gettime(CLOCK_MONOTONIC, &timestamp2);
-		double dt  = (1000.0 * timestamp2.tv_sec + 1e-6 * timestamp2.tv_nsec)
-			- (1000.0 * timestamp1.tv_sec + 1e-6 * timestamp1.tv_nsec);
+		clock_gettime(CLOCK_MONOTONIC, &ts2);
+		dt  = (1000.0 * ts2.tv_sec + 1e-6 * ts2.tv_nsec)
+			- (1000.0 * ts1.tv_sec + 1e-6 * ts1.tv_nsec);
 
 		if (dt > cycleDelay) {
-			timestamp1 = timestamp2;
+			ts1 = ts2;
 
 			cycle();
 
-			updateSDL(video, videoPitch);
+			updateSDL(video, videopitch);
 		}
 	}
 

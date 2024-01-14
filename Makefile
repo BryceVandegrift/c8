@@ -1,5 +1,6 @@
 CC = cc
-CFLAGS = -std=c99 -pedantic -Wall -I/usr/include/SDL2 -Os
+INC = -I/usr/include/SDL2
+CFLAGS = -std=c99 -pedantic -Wall -Os ${INC} -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700
 LDFLAGS = -lSDL2
 
 SRC = c8.c sdl.c util.c
