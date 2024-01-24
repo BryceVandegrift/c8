@@ -14,8 +14,6 @@ static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 static SDL_AudioDeviceID deviceid;
 
-/* This method of generating square waves is somewhat inconsistent
- * it needs to be replaced eventually...but for now it works */
 void
 audioCallback(void *data, uint8_t *buffer, int length)
 {

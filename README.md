@@ -53,8 +53,7 @@ who has never dipped their toes in this field.
 This project is still a work in progress. Some things that need to be
 changed are:
 
-- Code needs to be refactored, it looks like crap
-- Make audio more consistent/less buggy
+- Implement and test other CHIP-8 "quirks"
 - Port to other systems(?)
 
 ## Note
