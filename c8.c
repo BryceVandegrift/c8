@@ -241,33 +241,34 @@ OP_8xy3()
 void
 OP_8xy4()
 {
+	uint8_t carry = 0;
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 	uint16_t sum = registers[Vx] + registers[Vy];
 
 	if (sum > 255) {
-		registers[0xF] = 1;
-	} else {
-		registers[0xF] = 0;
+		carry = 1;
 	}
 
 	registers[Vx] = sum & 0xFF;
+	registers[0xF] = carry;
 }
 
 /* Set Vx = Vx - Vy, set VF = NOT borrow */
 void
 OP_8xy5()
 {
+	uint8_t carry = 1;
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
+	uint8_t diff = registers[Vx] - registers[Vy];
 
-	if (registers[Vx] > registers[Vy]) {
-		registers[0xF] = 1;
-	} else {
-		registers[0xF] = 0;
+	if (registers[Vx] < registers[Vy]) {
+		carry = 0;
 	}
 
-	registers[Vx] -= registers[Vy];
+	registers[Vx] = diff;
+	registers[0xF] = carry;
 }
 
 /* Incorrect mode: Shift Vx right by 1
@@ -277,31 +278,34 @@ OP_8xy6()
 {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
+	uint8_t lsb;
 
 	/* Save least significant bit in VF */
-	registers[0xF] = (registers[Vx] & 0x1);
+	lsb = (registers[Vx] & 0x1);
 
 	if (!incorrect) {
 		registers[Vx] = registers[Vy];
 	}
 
 	registers[Vx] >>= 1;
+	registers[0xF] = lsb;
 }
 
 /* Set Vx = Vy - Vx, set VF = NOT borrow */
 void
 OP_8xy7()
 {
+	uint8_t carry = 1;
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
+	uint8_t diff = registers[Vy] - registers[Vx];
 
-	if (registers[Vy] > registers[Vx]) {
-		registers[0xF] = 1;
-	} else {
-		registers[0xF] = 0;
+	if (registers[Vy] < registers[Vx]) {
+		carry = 0;
 	}
 
-	registers[Vx] = registers[Vy] - registers[Vx];
+	registers[Vx] = diff;
+	registers[0xF] = carry;
 }
 
 /* Incorrect mode: Shift Vx left by 1
@@ -311,15 +315,17 @@ OP_8xyE()
 {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
+	uint8_t lsb;
 
 	/* Save least significant bit in VF */
-	registers[0xF] = (registers[Vx] & 0x80) >> 7;
+	lsb = (registers[Vx] & 0x80) >> 7;
 
 	if (!incorrect) {
 		registers[Vx] = registers[Vy];
 	}
 
 	registers[Vx] <<= 1;
+	registers[0xF] = lsb;
 }
 
 /* Skip next instruction if Vx != Vy */
