@@ -46,7 +46,7 @@ great platform to learn how emulation and virtual machines work.
 Implementing a CHIP-8 VM is relatively easy on modern systems and in the
 process it teaches the user how virtual machines and emulators work.
 The CHIP-8 is sort of like a *"Baby's First Virtual Machine"* for someone
-who has never dipped their toes in this field.
+who has never dipped their toes into this field.
 
 ## TODO
 
