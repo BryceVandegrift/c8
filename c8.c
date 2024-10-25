@@ -393,6 +393,10 @@ OP_Dxyn()
 			spritepixel = spritebyte & (0x80 >> col);
 			screenpixel = &video[(yPos + row) * VIDEO_WIDTH + (xPos + col)];
 
+			if (((xPos + col) > VIDEO_WIDTH) || (yPos + row) > VIDEO_HEIGHT) {
+				continue;
+			}
+
 			/* if sprite pixel is on */
 			if (spritepixel) {
 				/* if sprite pixel is also on then collision */
