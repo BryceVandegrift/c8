@@ -58,6 +58,7 @@ static void TableE(void);
 static void TableF(void);
 static void init(void);
 static void cycle(void);
+static void updateTimers(void);
 static void loadROM(const char *filename);
 static void usage(void);
 
@@ -96,7 +97,7 @@ static uint16_t opcode;
 
 /* Runtime variables */
 static int videoScale = 10;
-static int cycleDelay = 4;
+static int frequency = 500;
 static int incorrect = 0;
 
 /* Dispatch tables */
@@ -688,7 +689,11 @@ cycle()
 
 	/* Decode and execute */
 	table[(opcode & 0xF000) >> 12]();
+}
 
+void
+updateTimers()
+{
 	/* Decrement delay timer if it has been set */
 	if (delayTimer > 0) {
 		delayTimer--;
@@ -729,7 +734,7 @@ loadROM(const char *filename)
 void
 usage()
 {
-	die("usage: c8 [-f ROM] [-s scale] [-d delay] [-v] [-h]");
+	die("usage: c8 [-r ROM] [-s scale] [-f freq] [-v] [-h]");
 }
 
 int
@@ -737,9 +742,7 @@ main(int argc, char *argv[])
 {
 	const char *filename = NULL;
 	size_t videopitch;
-	struct timespec ts1, ts2;
 	unsigned int quit = 0;
-	double dt;
 	int i;
 
 	for (i = 1; i < argc; i++) {
@@ -753,12 +756,12 @@ main(int argc, char *argv[])
 			incorrect = 1;
 		}
 		/* These options take one arugment */
-		else if (!strcmp(argv[i], "-f")) {
+		else if (!strcmp(argv[i], "-r")) {
 			filename = argv[++i];
 		} else if (!strcmp(argv[i], "-s")) {
 			videoScale = atoi(argv[++i]);
-		} else if (!strcmp(argv[i], "-d")) {
-			cycleDelay = atoi(argv[++i]);
+		} else if (!strcmp(argv[i], "-f")) {
+			frequency = atoi(argv[++i]);
 		} else {
 			usage();
 		}
@@ -774,22 +777,16 @@ main(int argc, char *argv[])
 
 	videopitch = sizeof(video[0]) * VIDEO_WIDTH;
 
-	clock_gettime(CLOCK_MONOTONIC, &ts1);
-
 	while (!quit) {
 		quit = processInput(keypad);
 
-		clock_gettime(CLOCK_MONOTONIC, &ts2);
-		dt  = (1000.0 * ts2.tv_sec + 1e-6 * ts2.tv_nsec)
-			- (1000.0 * ts1.tv_sec + 1e-6 * ts1.tv_nsec);
-
-		if (dt > cycleDelay) {
-			ts1 = ts2;
-
+		for (i = 0; i < frequency / 60; i++) {
 			cycle();
-
-			updateSDL(video, videopitch);
 		}
+
+		updateTimers();
+
+		updateSDL(video, videopitch);
 	}
 
 	cleanSDL();

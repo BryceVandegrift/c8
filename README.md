@@ -17,7 +17,7 @@ To run `c8` you will need to supply a CHIP-8 ROM file (You can find some ROM
 files [here](https://github.com/dmatlack/chip8/tree/master/roms/games))
 
 ``` sh
-./c8 -f rom.ch8
+./c8 -r rom.ch8
 ```
 
 Note: Some CHIP-8 games use a "false" instruction set that differs from the

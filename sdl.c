@@ -13,6 +13,7 @@ static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 static SDL_AudioDeviceID deviceid;
+static double lastTime = 0;
 
 void
 audioCallback(void *data, uint8_t *buffer, int length)
@@ -94,10 +95,21 @@ cleanSDL()
 void
 updateSDL(const void *buffer, int pitch)
 {
+	double framePeriod = 1000 / 60;
+	double curTime, busyTime;
+
 	SDL_UpdateTexture(texture, NULL, buffer, pitch);
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
+
+	curTime = SDL_GetPerformanceCounter() / SDL_GetPerformanceFrequency();
+
+	if ((busyTime = (curTime - lastTime) * 1000) < framePeriod) {
+		SDL_Delay(framePeriod - busyTime);
+	}
+
+	lastTime = SDL_GetPerformanceCounter() / SDL_GetPerformanceFrequency();
 }
 
 void
