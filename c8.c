@@ -748,7 +748,7 @@ main(int argc, char *argv[])
 	for (i = 1; i < argc; i++) {
 		/* These options have no arguments */
 		if (!strcmp(argv[i], "-v")) {
-			fprintf(stderr, "c8\n");
+			puts("c8-"VERSION);
 			return 0;
 		} else if (!strcmp(argv[i], "-h")) {
 			usage();
