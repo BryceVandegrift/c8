@@ -20,10 +20,10 @@ files [here](https://github.com/dmatlack/chip8/tree/master/roms/games))
 ./c8 -r rom.ch8
 ```
 
-Note: Some CHIP-8 games use a "false" instruction set that differs from the
-normal CHIP-8 instruction set. If for some reason a CHIP-8 ROM does not work,
-try giving the `-i` option to enable *"incorrect mode"* which emulates this
-"false" instruction set.
+Note: Some CHIP-8 emulators in the past had interesting quirks. Some CHIP-8
+programs depend on these quirks to function properly. The `-shift`, `-vf`,
+`-mem`, and `-jump` flags enable these separate quirks. If your CHIP-8 does
+not run or run incorrectly try enabling some of these flags.
 
 ## What is CHIP-8?
 

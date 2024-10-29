@@ -98,7 +98,10 @@ static uint16_t opcode;
 /* Runtime variables */
 static int videoScale = 10;
 static int frequency = 500;
-static int incorrect = 0;
+static int qvf = 0;
+static int qmem = 0;
+static int qshift = 0;
+static int qjump = 0;
 
 /* Dispatch tables */
 static optable table0[0xE + 1];
@@ -209,31 +212,46 @@ OP_8xy0()
 }
 
 /* Set Vx = Vx OR Vy */
+/* Quirk mode: Reset flag register */
 void
 OP_8xy1()
 {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
+	if (qvf) {
+		registers[0xF] = 0;
+	}
+
 	registers[Vx] |= registers[Vy];
 }
 
 /* Set Vx = Vx AND Vy */
+/* Quirk mode: Reset flag register */
 void
 OP_8xy2()
 {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
 
+	if (qvf) {
+		registers[0xF] = 0;
+	}
+
 	registers[Vx] &= registers[Vy];
 }
 
 /* Set Vx = Vx XOR Vy */
+/* Quirk mode: Reset flag register */
 void
 OP_8xy3()
 {
 	uint8_t Vx = (opcode & 0x0F00) >> 8;
 	uint8_t Vy = (opcode & 0x00F0) >> 4;
+
+	if (qvf) {
+		registers[0xF] = 0;
+	}
 
 	registers[Vx] ^= registers[Vy];
 }
@@ -272,8 +290,8 @@ OP_8xy5()
 	registers[0xF] = carry;
 }
 
-/* Incorrect mode: Shift Vx right by 1
- * Correct mode: Copy Vy to Vx and shift Vx right by 1 */
+/* Shift Vx right by 1
+ * Quirk mode: Copy Vy to Vx and shift Vx right by 1 */
 void
 OP_8xy6()
 {
@@ -284,7 +302,7 @@ OP_8xy6()
 	/* Save least significant bit in VF */
 	lsb = (registers[Vx] & 0x1);
 
-	if (!incorrect) {
+	if (!qshift) {
 		registers[Vx] = registers[Vy];
 	}
 
@@ -309,8 +327,8 @@ OP_8xy7()
 	registers[0xF] = carry;
 }
 
-/* Incorrect mode: Shift Vx left by 1
- * Correct mode: Copy Vy to Vx and shift Vx left by 1 */
+/* Shift Vx left by 1
+ * Quirk mode: Copy Vy to Vx and shift Vx left by 1 */
 void
 OP_8xyE()
 {
@@ -321,7 +339,7 @@ OP_8xyE()
 	/* Save least significant bit in VF */
 	lsb = (registers[Vx] & 0x80) >> 7;
 
-	if (!incorrect) {
+	if (!qshift) {
 		registers[Vx] = registers[Vy];
 	}
 
@@ -351,10 +369,17 @@ OP_Annn()
 }
 
 /* Jump to location nnn + V0 */
+/* Quirk mode: Jump to Vx where x is first n */
 void
 OP_Bnnn()
 {
 	uint16_t address = opcode & 0x0FFF;
+	uint8_t Vx = (opcode & 0x0F00) >> 8;
+
+	if (qjump) {
+		pc = registers[Vx] + address;
+		return;
+	}
 
 	pc = registers[0] + address;
 }
@@ -545,7 +570,7 @@ OP_Fx33()
 }
 
 /* Store registers V0 through Vx into memory starting at I
- * Correct mode: I is set to I + X + 1 after operation */
+ * Quirk mode: I is incremented after operation */
 void
 OP_Fx55()
 {
@@ -556,13 +581,13 @@ OP_Fx55()
 		memory[index + i] = registers[i];
 	}
 
-	if (!incorrect) {
-		index += Vx + 1;
+	if (qmem) {
+		index++;
 	}
 }
 
 /* Read registers V0 through Vx from memory starting at I
- * Correct mode: I is set to I + X + 1 after operation */
+ * Quirk mode: I is incremented after operation */
 void
 OP_Fx65()
 {
@@ -573,8 +598,8 @@ OP_Fx65()
 		registers[i] = memory[index + i];
 	}
 
-	if (!incorrect) {
-		index += Vx + 1;
+	if (qmem) {
+		index++;
 	}
 }
 
@@ -734,7 +759,7 @@ loadROM(const char *filename)
 void
 usage()
 {
-	die("usage: c8 [-r ROM] [-s scale] [-f freq] [-v] [-h]");
+	die("usage: c8 [-r ROM] [-s scale] [-f freq] [-shift] [-jump] [-mem] [-vf] [-v] [-h]");
 }
 
 int
@@ -752,8 +777,14 @@ main(int argc, char *argv[])
 			return 0;
 		} else if (!strcmp(argv[i], "-h")) {
 			usage();
-		} else if (!strcmp(argv[i], "-i")) {
-			incorrect = 1;
+		} else if (!strcmp(argv[i], "-vf")) {
+			qvf = 1;
+		} else if (!strcmp(argv[i], "-mem")) {
+			qmem = 1;
+		} else if (!strcmp(argv[i], "-shift")) {
+			qshift = 1;
+		} else if (!strcmp(argv[i], "-jump")) {
+			qjump = 1;
 		}
 		/* These options take one arugment */
 		else if (!strcmp(argv[i], "-r")) {
